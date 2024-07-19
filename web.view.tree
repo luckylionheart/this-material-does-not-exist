@@ -798,7 +798,7 @@ $optimade_tmdne_card $optimade_tmdne_swipe
 					card_position <= card_position \
 				sub /
 					<= Name $mol_link
-						uri <= json_link \
+						uri <= link \
 						sub /
 							<= Name_content $mol_html_view
 								minimal_height 22
@@ -880,7 +880,7 @@ $optimade_tmdne_app $mol_view
 					click? <=> click_yes? null
 				^ cards / <= Card* $optimade_tmdne_card
 					name <= card_name* \
-					json_link <=> card_link* \
+					link <= card_link* \
 					loaded <= card_loaded* false
 					why? <=> why*? \
 					pointer_holding? <=> card_holding? false

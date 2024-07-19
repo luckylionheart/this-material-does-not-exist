@@ -11911,7 +11911,7 @@ var $;
 		card_position(){
 			return "";
 		}
-		json_link(){
+		link(){
 			return "";
 		}
 		name(){
@@ -11925,7 +11925,7 @@ var $;
 		}
 		Name(){
 			const obj = new this.$.$mol_link();
-			(obj.uri) = () => ((this?.json_link()));
+			(obj.uri) = () => ((this?.link()));
 			(obj.sub) = () => ([(this?.Name_content())]);
 			return obj;
 		}
@@ -12298,7 +12298,7 @@ var $;
 		Card(id){
 			const obj = new this.$.$optimade_tmdne_card();
 			(obj.name) = () => ((this?.card_name(id)));
-			(obj.json_link) = () => ((this?.card_link(id)));
+			(obj.link) = () => ((this?.card_link(id)));
 			(obj.loaded) = () => ((this?.card_loaded(id)));
 			(obj.why) = (next) => ((this?.why(id, next)));
 			(obj.pointer_holding) = (next) => ((this?.card_holding(next)));
@@ -12467,13 +12467,12 @@ var $;
                 return formula_html(str);
             }
             card_link(n) {
-                const link = this.fetch_by_number(n)?.data[0]?.attributes?._gnome_material_id;
-                return `https://optimade-gnome.odbx.science/v1/structures/data/gnome_data/by_id.zip/data/gnome_data/by_id/${link}.CIF`;
+                const link_id = this.fetch_by_number(n)?.data[0]?.id;
+                return `https://optimade-gnome.odbx.science/v1/structures/${link_id}`;
             }
             card_loaded(n) {
                 try {
                     this.card_name(n);
-                    this.card_link(n);
                     return this.number() === n;
                 }
                 catch (error) {
