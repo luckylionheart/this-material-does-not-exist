@@ -332,6 +332,7 @@ $optimade_cifplayer_player $mol_view
 	atom_box* null
 	overlay_box* null
 	-
+	minimal_heigth 300
 	sub /
 		<= Three $optimade_cifplayer_lib_three_view
 			scene => scene
@@ -819,8 +820,6 @@ $optimade_tmdne_app $mol_view
 	number? 1
 	plugins /
 		<= Theme $mol_theme_auto
-	auto /
-		<= update null
 	rotating? false
 	number_swiped? 0
 	number_prefetch? 0
@@ -829,7 +828,7 @@ $optimade_tmdne_app $mol_view
 			fullscreen? => player_fullscreen?
 			attr *
 				fullscreen <= player_fullscreen?
-				card_holding <= card_holding
+				optimade_tmdne_app_player_hidden <= card_holding
 			data <= json null
 			Fullscreen null
 			Overlays null
@@ -844,7 +843,7 @@ $optimade_tmdne_app $mol_view
 							title \Does this material exist?
 		<= Prediction $mol_list
 			attr *
-				rotating <= rotating
+				optimade_tmdne_app_prediction_hidden <= rotating
 			sub <= params /
 				<= Param* $mol_view
 					sub /
@@ -870,7 +869,7 @@ $optimade_tmdne_app $mol_view
 										\)
 		<= Foot $mol_view
 			attr *
-				rotating <= rotating
+				optimade_tmdne_app_foot_hidden <= rotating
 			sub /
 				<= Hint_no $mol_button_minor
 					title \ᐊ No

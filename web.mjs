@@ -620,7 +620,12 @@ var $;
 var $;
 (function ($) {
     function $mol_promise_like(val) {
-        return val && typeof val === 'object' && 'then' in val && typeof val.then === 'function';
+        try {
+            return val && typeof val === 'object' && 'then' in val && typeof val.then === 'function';
+        }
+        catch {
+            return false;
+        }
     }
     $.$mol_promise_like = $mol_promise_like;
 })($ || ($ = {}));
@@ -2489,8 +2494,7 @@ var $;
             const win = this.$.$mol_dom_context;
             if (win.parent !== win.self && !win.document.hasFocus())
                 return;
-            new this.$.$mol_after_frame(() => {
-                this.dom_node().scrollIntoView({ block: 'start', inline: 'nearest' });
+            new this.$.$mol_after_timeout(500, () => {
                 this.focused(true);
             });
         }
@@ -4441,7 +4445,6 @@ var $;
             contain: 'content',
             '>': {
                 $mol_view: {
-                    transform: 'translateZ(0)',
                     gridArea: '1/1',
                 },
             },
@@ -5550,6 +5553,9 @@ var $;
         json() {
             return $mol_wire_sync(this.native).json();
         }
+        blob() {
+            return $mol_wire_sync(this.native).blob();
+        }
         buffer() {
             return $mol_wire_sync(this.native).arrayBuffer();
         }
@@ -5569,9 +5575,6 @@ var $;
     __decorate([
         $mol_action
     ], $mol_fetch_response.prototype, "text", null);
-    __decorate([
-        $mol_action
-    ], $mol_fetch_response.prototype, "buffer", null);
     __decorate([
         $mol_action
     ], $mol_fetch_response.prototype, "xml", null);
@@ -5618,6 +5621,9 @@ var $;
         static json(input, init) {
             return this.success(input, init).json();
         }
+        static blob(input, init) {
+            return this.success(input, init).blob();
+        }
         static buffer(input, init) {
             return this.success(input, init).buffer();
         }
@@ -5646,6 +5652,9 @@ var $;
     __decorate([
         $mol_action
     ], $mol_fetch, "json", null);
+    __decorate([
+        $mol_action
+    ], $mol_fetch, "blob", null);
     __decorate([
         $mol_action
     ], $mol_fetch, "buffer", null);
@@ -6547,6 +6556,9 @@ var $;
 		overlay_box(id){
 			return null;
 		}
+		minimal_heigth(){
+			return 300;
+		}
 		sub(){
 			return [
 				(this?.Three()), 
@@ -6826,54 +6838,76 @@ var $;
             mpds_data: crystal.mpds_data,
             mpds_demo: crystal.mpds_demo
         };
-        const pos2els = {};
-        const hashes = {};
+        const groups = [];
         for (let i = 0; i < crystal.atoms.length; i++) {
-            const pos = [crystal.atoms[i].x, crystal.atoms[i].y, crystal.atoms[i].z];
-            const hash = pos.map(function (item) { return item.toFixed(2); }).join(',');
-            if (hashes.hasOwnProperty(hash)) {
-                var update = "";
-                for (let oprop in render.atoms[hashes[hash]].overlays) {
+            const atom = crystal.atoms[i];
+            const pos = [atom.x, atom.y, atom.z];
+            const fpos = crystal.cartesian
+                ? cell_matrix ? math.divide(pos, cell_matrix).map(fract_cord_norm) : null
+                : pos.map(fract_cord_norm);
+            const cpos = fpos ? math.multiply(fpos, cell_matrix) : pos;
+            if (groups.some(group => {
+                if (is_overlap(cpos, group.cpos, $optimade_cifplayer_matinfio.pos_overlap_limit)) {
+                    const AseRadii = $optimade_cifplayer_matinfio_chemical_elements.AseRadii[atom.symbol];
+                    const pos = group.atoms.findIndex(atom2 => {
+                        return AseRadii > $optimade_cifplayer_matinfio_chemical_elements.AseRadii[atom2.symbol];
+                    });
+                    if (pos == -1)
+                        group.atoms.push(atom);
+                    else
+                        group.atoms.splice(pos, 0, atom);
+                    return true;
+                }
+            })) {
+                continue;
+            }
+            groups.push({ fpos, cpos, atoms: [atom] });
+        }
+        for (let i = 0; i < groups.length; i++) {
+            const { fpos, cpos, atoms } = groups[i];
+            const overlays = {
+                "S": atoms[0].symbol,
+                "N": i + 1,
+            };
+            for (let oprop in atoms[0].overlays) {
+                overlays[oprop] = atoms[0].overlays[oprop];
+            }
+            atoms.slice(1).forEach(atom => {
+                for (let oprop in overlays) {
                     if (oprop == 'S') {
-                        if (pos2els[hash].indexOf(crystal.atoms[i].symbol) == -1) {
-                            update = " " + crystal.atoms[i].symbol;
-                            pos2els[hash].push(crystal.atoms[i].symbol);
+                        if (atoms.every(a => a.symbol != atom.symbol)) {
+                            overlays[oprop] += ' ' + atom.symbol;
                         }
                     }
-                    else if (oprop == 'N')
-                        update = ", " + (i + 1);
-                    else if (oprop == '_atom_site_occupancy')
-                        update = "+" + crystal.atoms[i].overlays[oprop];
-                    else
-                        update = " " + crystal.atoms[i].overlays[oprop];
-                    render.atoms[hashes[hash]].overlays[oprop] += update;
+                    else if (oprop == 'N') {
+                        overlays[oprop] += ', ' + (i + 1);
+                    }
+                    else if (oprop == '_atom_site_occupancy') {
+                        overlays[oprop] += '+' + atom.overlays[oprop];
+                    }
+                    else {
+                        overlays[oprop] += ' ' + atom.overlays[oprop];
+                    }
                 }
-            }
-            else {
-                const color = $optimade_cifplayer_matinfio_chemical_elements.JmolColors[crystal.atoms[i].symbol] || '#FFFF00';
-                const radius = $optimade_cifplayer_matinfio_chemical_elements.AseRadii[crystal.atoms[i].symbol] || 0.66;
-                const overlays = {
-                    "S": crystal.atoms[i].symbol,
-                    "N": i + 1,
-                };
-                for (let oprop in crystal.atoms[i].overlays) {
-                    overlays[oprop] = crystal.atoms[i].overlays[oprop];
-                }
-                const cpos = crystal.cartesian ? pos : math.multiply(pos, cell_matrix);
-                const fpos = !crystal.cartesian ? pos : cell_matrix ? math.divide(pos, cell_matrix) : null;
-                const fract = fpos ? { 'x': fpos[0], 'y': fpos[1], 'z': fpos[2] } : null;
-                render.atoms.push({
-                    'fract': fract,
-                    'x': cpos[0],
-                    'y': cpos[1],
-                    'z': cpos[2],
-                    'c': color,
-                    'r': radius,
-                    'overlays': overlays
-                });
-                hashes[hash] = render.atoms.length - 1;
-                pos2els[hash] = [crystal.atoms[i].symbol];
-            }
+            });
+            const color = $optimade_cifplayer_matinfio_chemical_elements.JmolColors[atoms[0].symbol] || '#FFFF00';
+            const radius = $optimade_cifplayer_matinfio_chemical_elements.AseRadii[atoms[0].symbol] || 0.66;
+            const atom_result = {
+                fract: fpos ? {
+                    x: fpos[0],
+                    y: fpos[1],
+                    z: fpos[2],
+                } : null,
+                x: cpos[0],
+                y: cpos[1],
+                z: cpos[2],
+                c: color,
+                r: radius,
+                overlays,
+                symbol: atoms[0].symbol,
+                label: atoms[0].label,
+            };
+            render.atoms.push(atom_result);
         }
         for (let oprop in crystal.atoms.at(-1).overlays) {
             render.overlayed[oprop] = $optimade_cifplayer_matinfio_custom_atom_loop_props[oprop];
@@ -6881,6 +6915,17 @@ var $;
         return render;
     }
     $.$optimade_cifplayer_matinfio_player_from_obj = $optimade_cifplayer_matinfio_player_from_obj;
+    function fract_cord_norm(cord) {
+        const res = cord % 1;
+        return res > 0 ? res : res + 1;
+    }
+    function is_overlap(pos1, pos2, threshold) {
+        for (let i = 0; i < 3; i++) {
+            if (pos1[i] < pos2[i] - threshold || pos1[i] > pos2[i] + threshold)
+                return false;
+        }
+        return true;
+    }
 })($ || ($ = {}));
 
 ;
@@ -6901,6 +6946,7 @@ var $;
         warning: console.warn,
     };
     class $optimade_cifplayer_matinfio extends $mol_object2 {
+        static pos_overlap_limit = 0.1;
         static log = this.$.$optimade_cifplayer_matinfio_log;
         static detect_format(data) {
             if (!data)
@@ -7077,10 +7123,8 @@ var $;
         return res;
     }
     function fract_cord_norm(cord) {
-        let res = cord % 1;
-        if (res < 0)
-            res = res + 1;
-        return res;
+        const res = cord % 1;
+        return res > 0 ? res : res + 1;
     }
 })($ || ($ = {}));
 
@@ -7661,6 +7705,7 @@ var $;
                 color: $mol_theme.back,
             },
             position: 'relative',
+            height: '100%',
             '@': {
                 fullscreen: {
                     'true': {
@@ -7963,7 +8008,7 @@ var $;
                     this.symmetry_atoms(symmetry).forEach(data => {
                         for (const name of next_symmetries) {
                             const atoms = this.symmetry_atoms(name);
-                            if (is_overlap(data, atoms, 0.01)) {
+                            if (is_overlap(data, atoms, $optimade_cifplayer_matinfio.pos_overlap_limit)) {
                                 return;
                             }
                         }
@@ -11140,6 +11185,7 @@ var $;
 (function ($) {
     $.$mol_syntax2_md_flow = new $mol_syntax2({
         'quote': /^((?:(?:[>"] )(?:[^]*?)$(\r?\n?))+)([\n\r]*)/,
+        'spoiler': /^((?:(?:[\?] )(?:[^]*?)$(\r?\n?))+)([\n\r]*)/,
         'header': /^([#=]+)(\s+)(.*?)$([\n\r]*)/,
         'list': /^((?:(?: ?([*+-])|(?:\d+[\.\)])+) +(?:[^]*?)$(?:\r?\n?)(?:  (?:[^]*?)$(?:\r?\n?))*)+)((?:\r?\n)*)/,
         'code': /^(```\s*)([\w.-]*)[\r\n]+([^]*?)^(```)$([\n\r]*)/,
@@ -12128,9 +12174,6 @@ var $;
 			const obj = new this.$.$mol_theme_auto();
 			return obj;
 		}
-		update(){
-			return null;
-		}
 		player_fullscreen(next){
 			return (this?.Player()?.fullscreen(next));
 		}
@@ -12147,7 +12190,7 @@ var $;
 		}
 		Player(){
 			const obj = new this.$.$optimade_cifplayer_player();
-			(obj.attr) = () => ({"fullscreen": (this?.player_fullscreen()), "card_holding": (this?.card_holding())});
+			(obj.attr) = () => ({"fullscreen": (this?.player_fullscreen()), "optimade_tmdne_app_player_hidden": (this?.card_holding())});
 			(obj.data) = () => ((this?.json()));
 			(obj.Fullscreen) = () => (null);
 			(obj.Overlays) = () => (null);
@@ -12244,7 +12287,7 @@ var $;
 		}
 		Prediction(){
 			const obj = new this.$.$mol_list();
-			(obj.attr) = () => ({"rotating": (this?.rotating())});
+			(obj.attr) = () => ({"optimade_tmdne_app_prediction_hidden": (this?.rotating())});
 			(obj.sub) = () => ((this?.params()));
 			return obj;
 		}
@@ -12310,7 +12353,7 @@ var $;
 		}
 		Foot(){
 			const obj = new this.$.$mol_view();
-			(obj.attr) = () => ({"rotating": (this?.rotating())});
+			(obj.attr) = () => ({"optimade_tmdne_app_foot_hidden": (this?.rotating())});
 			(obj.sub) = () => ([
 				(this?.Hint_no()), 
 				(this?.Hint_yes()), 
@@ -12368,9 +12411,6 @@ var $;
 		}
 		plugins(){
 			return [(this?.Theme())];
-		}
-		auto(){
-			return [(this?.update())];
 		}
 		rotating(next){
 			if(next !== undefined) return next;
@@ -12489,13 +12529,19 @@ var $;
                     this.Card(this.number()),
                 ];
             }
+            random_sample() {
+                return random_int(1, 384937);
+            }
+            number(next) {
+                return next ?? this.random_sample();
+            }
             number_prefetch(next) {
-                return next ?? random_int(1, 384937);
+                return next ?? this.random_sample();
             }
             update() {
                 this.number_swiped(this.number());
                 this.number(this.number_prefetch());
-                const prefetch = random_int(1, 384937);
+                const prefetch = this.random_sample();
                 this.number_prefetch(prefetch);
                 $mol_wire_async(this).predict_by_number(prefetch);
             }
@@ -12571,6 +12617,12 @@ var $;
         __decorate([
             $mol_mem_key
         ], $optimade_tmdne_app.prototype, "card_loaded", null);
+        __decorate([
+            $mol_action
+        ], $optimade_tmdne_app.prototype, "random_sample", null);
+        __decorate([
+            $mol_mem
+        ], $optimade_tmdne_app.prototype, "number", null);
         __decorate([
             $mol_mem
         ], $optimade_tmdne_app.prototype, "number_prefetch", null);
@@ -12658,7 +12710,7 @@ var $;
                 width: '100%',
                 opacity: 1,
                 transition: 'opacity 0.15s',
-                '[card_holding]': {
+                '[optimade_tmdne_app_player_hidden]': {
                     'true': {
                         opacity: 0.1,
                     },
@@ -12705,7 +12757,7 @@ var $;
                 pointerEvents: 'none',
                 opacity: 1,
                 transition: 'opacity 0.15s',
-                '[rotating]': {
+                '[optimade_tmdne_app_prediction_hidden]': {
                     'true': {
                         opacity: 0,
                     },
@@ -12750,7 +12802,7 @@ var $;
                 pointerEvents: 'none',
                 transition: 'opacity 0.2s',
                 opacity: 1,
-                '[rotating]': {
+                '[optimade_tmdne_app_foot_hidden]': {
                     'true': {
                         opacity: 0,
                     },
