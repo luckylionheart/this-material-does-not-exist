@@ -10861,9 +10861,22 @@ var $;
 			(obj.event) = () => ({"pointerdown": (next) => (this?.player_pointerdown(next)), "pointerup": (next) => (this?.player_pointerup(next))});
 			return obj;
 		}
+		title_link(){
+			return "";
+		}
+		Head_link(){
+			const obj = new this.$.$mol_link();
+			(obj.uri) = () => ((this?.title_link()));
+			(obj.sub) = () => (["this material"]);
+			return obj;
+		}
 		Head_title(){
 			const obj = new this.$.$mol_paragraph();
-			(obj.title) = () => ("Does this material exist?");
+			(obj.sub) = () => ([
+				"Does", 
+				(this?.Head_link()), 
+				"exist?"
+			]);
 			return obj;
 		}
 		Head_card(){
@@ -11102,6 +11115,7 @@ var $;
 	($mol_mem(($.$optimade_tmdne_app.prototype), "player_pointerdown"));
 	($mol_mem(($.$optimade_tmdne_app.prototype), "player_pointerup"));
 	($mol_mem(($.$optimade_tmdne_app.prototype), "Player"));
+	($mol_mem(($.$optimade_tmdne_app.prototype), "Head_link"));
 	($mol_mem(($.$optimade_tmdne_app.prototype), "Head_title"));
 	($mol_mem(($.$optimade_tmdne_app.prototype), "Head_card"));
 	($mol_mem(($.$optimade_tmdne_app.prototype), "Head_space"));
@@ -11319,6 +11333,10 @@ var $;
                 }).json() ?? {};
                 return prediction;
             }
+            title_link() {
+                const link_id = this.fetch_by_number(this.number())?.data[0]?.id;
+                return `https://optimade-gnome.odbx.science/v1/structures/${link_id}`;
+            }
             json() {
                 return this.fetch_by_number(this.number());
             }
@@ -11426,6 +11444,9 @@ var $;
         __decorate([
             $mol_mem_key
         ], $optimade_tmdne_app.prototype, "predict_by_number", null);
+        __decorate([
+            $mol_mem
+        ], $optimade_tmdne_app.prototype, "title_link", null);
         __decorate([
             $mol_mem
         ], $optimade_tmdne_app.prototype, "json", null);
@@ -11560,6 +11581,20 @@ var $;
                 },
                 font: {
                     size: '1.2rem',
+                },
+            },
+            Head_link: {
+                font: {
+                    size: '1.2rem',
+                },
+                textDecoration: 'underline',
+                paddingTop: '0',
+                paddingLeft: '4px',
+                paddingRight: '4px',
+                ':hover': {
+                    background: {
+                        color: 'transparent',
+                    },
                 },
             },
             Prediction: {
